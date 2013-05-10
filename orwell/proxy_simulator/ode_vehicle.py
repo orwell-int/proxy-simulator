@@ -39,14 +39,22 @@ class Robot(object):
         print 'left wheel'
         # left wheel
         radius = 1
+        height = 0.2
         px, py, pz = (4, 0, -4)
         self._left_wheel_body = ode.Body(world.world)
         wheel_mass = ode.Mass()
-        wheel_mass.setSphere(density, radius)
+        #wheel_mass.setSphere(density, radius)
+        wheel_mass.setCylinder(density, 1, radius, height)
         self._left_wheel_body.setMass(wheel_mass)
-        left_wheel_geom = ode.GeomSphere(world.space, radius=radius)
+        #left_wheel_geom = ode.GeomSphere(world.space, radius=radius)
+        left_wheel_geom = ode.GeomCylinder(world.space, radius=radius,
+                                           length=height)
         left_wheel_geom.setBody(self._left_wheel_body)
-        self._left_wheel_body.setPosition((px, py, pz))
+        #self._left_wheel_body.setPosition((px, py, pz))
+        self._left_wheel_body.setRotation((0, 0, 1,
+                                           0, 1, 0,
+                                           -1, 0, 0))
+        self._left_wheel_body.setPosition((px - height / 2, py, pz))
         world.add_body(self._left_wheel_body)
         world.add_geom(left_wheel_geom)
 
@@ -56,11 +64,18 @@ class Robot(object):
         px = -4
         self._right_wheel_body = ode.Body(world.world)
         wheel_mass = ode.Mass()
-        wheel_mass.setSphere(density, radius)
+        #wheel_mass.setSphere(density, radius)
+        wheel_mass.setCylinder(density, 1, radius, height)
         self._right_wheel_body.setMass(wheel_mass)
-        right_wheel_geom = ode.GeomSphere(world.space, radius=radius)
+        #right_wheel_geom = ode.GeomSphere(world.space, radius=radius)
+        right_wheel_geom = ode.GeomCylinder(world.space, radius=radius,
+                                            length=height)
         right_wheel_geom.setBody(self._right_wheel_body)
-        self._right_wheel_body.setPosition((px, py, pz))
+        #self._right_wheel_body.setPosition((px, py, pz))
+        self._right_wheel_body.setRotation((0, 0, 1,
+                                            0, 1, 0,
+                                            -1, 0, 0))
+        self._right_wheel_body.setPosition((px + height / 2, py, pz))
         world.add_body(self._right_wheel_body)
         world.add_geom(right_wheel_geom)
 
@@ -201,7 +216,7 @@ class World(object):
         Render either a ode.GeomBox or ode.GeomSphere object.
         """
 
-        allowed = [ode.GeomBox, ode.GeomSphere]
+        allowed = [ode.GeomBox, ode.GeomSphere, ode.GeomCylinder]
         ok = False
         for klass in allowed:
             ok = ok or isinstance(geom, klass)
@@ -220,6 +235,11 @@ class World(object):
         elif (isinstance(geom, ode.GeomSphere)):
             r = geom.getRadius()
             glutSolidSphere(r, 20, 20)
+        elif (isinstance(geom, ode.GeomCylinder)):
+            #print "draw a cylinder"
+            r, h = geom.getParams()
+            #print "r=%s ; h=%s" % (r, h)
+            glutSolidCylinder(r, h, 20, 20)
 
         glPopMatrix()
 
@@ -297,6 +317,7 @@ class World(object):
         self._renderGround()
 
         self._setCamera()
+        #print "len(self._geoms) =", len(self._geoms)
         for geom in self._geoms:
             self._renderGeom(geom)
 
