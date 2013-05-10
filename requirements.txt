@@ -1,8 +1,5 @@
-Box2D==2.3b0
 argparse==1.2.1
 distribute==0.6.38
-pip-accel==0.7.2
 pygame==1.9.1release
-## FIXME: could not find svn URL in dependency_links for this package:
-pypybox2d==2.1-r331
 wsgiref==0.1.2
+PyODE==1.2.1
