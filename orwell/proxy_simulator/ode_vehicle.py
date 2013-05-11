@@ -75,7 +75,7 @@ class Robot(object):
         self._right_wheel_body.setRotation((0, 0, 1,
                                             0, 1, 0,
                                             -1, 0, 0))
-        self._right_wheel_body.setPosition((px + height / 2, py, pz))
+        self._right_wheel_body.setPosition((px - height / 2, py, pz))
         world.add_body(self._right_wheel_body)
         world.add_geom(right_wheel_geom)
 
