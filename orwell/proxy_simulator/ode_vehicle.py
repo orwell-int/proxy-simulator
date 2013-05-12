@@ -3,15 +3,17 @@ import pygame
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
+import orwell.proxy_simulator.version1_pb2 as pb_messages
 
 
-class Robot(object):
+class Tank(object):
 
-    def __init__(self):
+    def __init__(self, robot_descriptor):
         self._velocity_left = 0
         self._velocity_right = 0
         self._left_wheel_body = None
         self._right_wheel_body = None
+        self._robot_descriptor = robot_descriptor
 
     def create_objects(self, world):
         print 'chassis'
@@ -146,14 +148,165 @@ class Robot(object):
         self._left_wheel_joint.setParam(ode.ParamVel, self._velocity_left)
         self._right_wheel_joint.setParam(ode.ParamVel, self._velocity_right)
 
+    def handle_message(self, wrapper_msg):
+        if (self._robot_descriptor.recipient == wrapper_msg.recipient):
+            left, right = \
+                    self._robot_descriptor.get_movement(wrapper_msg)
+            self.velocity_left = 10 * left
+            self.velocity_right = 10 * right
 
-class World(object):
+
+class TankDescriptor(object):
+    def __init__(self, robot_id):
+        self._robot_id = robot_id
+        self._recipient = "TANK_%i" % self._robot_id
+
+    @property
+    def recipient(self):
+        return self._recipient
+
+    def get_move_message(self, left, right):
+        assert(-1 <= left <= 1)
+        assert(-1 <= right <= 1)
+        sub_msg = pb_messages.move_tank_message()
+        sub_msg.left = left
+        sub_msg.right = right
+        wrapper_msg = pb_messages.base_message()
+        wrapper_msg.message_type = "MOVE_TANK"
+        wrapper_msg.serialized_message = sub_msg.SerializeToString()
+        wrapper_msg.recipient = self._recipient
+        return wrapper_msg.SerializeToString()
+
+    def get_movement(self, wrapper_msg):
+        assert("MOVE_TANK" == wrapper_msg.message_type)
+        sub_msg = pb_messages.move_tank_message()
+        sub_msg.ParseFromString(wrapper_msg.serialized_message)
+        assert(-1 <= sub_msg.left <= 1)
+        assert(-1 <= sub_msg.right <= 1)
+        return (sub_msg.left, sub_msg.right)
+
+
+class BaseEventHandler(object):
+    """
+    Base class which defines the default behaviour of the different
+    event handler.
+    """
+    def handle_events(self, events):
+        """
+        Dispatch the events between #_key_down (key has been pressed),
+        #_key_up (key has been released), and #_any_event (the rest).
+        Events are processed in order.
+        `events`: the events to handle.
+        """
+        for e in events:
+            if (e.type == pygame.KEYDOWN):
+                self._key_down(e.key)
+            elif (e.type == pygame.KEYUP):
+                self._key_up(e.key)
+            else:
+                self._any_event(e)
+
+    def _key_down(self, key):
+        """
+        Override to define what happens when a given key is pressed.
+        `key`: the key that has just been pressed.
+        """
+        pass
+
+    def _key_up(self, key):
+        """
+        Override to define what happens when a given key is released.
+        `key`: the key that has just been released.
+        """
+        pass
+
+    def _any_event(self, event):
+        """
+        Override to define what happens for an event that does not match
+        a key pressed or released.
+        `event`: the full description of the event.
+        """
+        pass
+
+    def get_messages(self):
+        """
+        Returns a list of messages (in reaction to the events handled).
+        """
+        return []
+
+
+class TankEventHandler(BaseEventHandler):
+    def __init__(self, robot_descriptor):
+        self._robot_descriptor = robot_descriptor
+        self._left = 0
+        self._right = 0
+
+    def _key_down(self, key):
+        if (key == pygame.K_q):
+            self._left = 1
+        elif (key == pygame.K_a):
+            self._left = -1
+        elif (key == pygame.K_e):
+            self._right = 1
+        elif (key == pygame.K_d):
+            self._right = -1
+
+    def _key_up(self, key):
+        if (key in (pygame.K_q, pygame.K_a)):
+            self._left = 0.0
+        elif (key in (pygame.K_e, pygame.K_d)):
+            self._right = 0.0
+
+    def get_messages(self):
+        return [self._robot_descriptor.get_move_message(
+            self._left, self._right)]
+
+
+class Broadcaster(object):
+    """
+    Sends messages to all listeners registered.
+    """
+    def __init__(self):
+        self._listeners = []
+        self._messages = []
+
+    def register_listener(self, listener):
+        """
+        Register a listener if not registered allready.
+        `listener`: the listener to add.
+        """
+        if (listener not in self._listeners):
+            self._listeners.append(listener)
+
+    def queue(self, messages):
+        """
+        Queue some messages to be sent through the broadcaster. The messages
+        are stored until #broadcast is called.
+        `messages`: a list of messages to send.
+        """
+        self._messages += messages
+
+    def broadcast(self):
+        """
+        Broadcast all the messages stored to all the listeners.
+        Messages are sent in the order they where given.
+        """
+        while (self._messages):
+            message = self._messages.pop(0)
+            wrapper_msg = pb_messages.base_message()
+            wrapper_msg.ParseFromString(message)
+            for listener in self._listeners:
+                listener.handle_message(wrapper_msg)
+
+
+class World(BaseEventHandler):
     cameraDistance = 10.0
     clip = 100.0
     fps = 50.0
 
-    def __init__(self, resolution=(1024, 768)):
+    def __init__(self, broadcaster, resolution=(1024, 768)):
         self._resolution = resolution
+        self._broadcaster = broadcaster
         self._xRot = 0.0
         self._yRot = 0.0
         self._xCoeff = 360.0 / self._resolution[0]
@@ -168,6 +321,7 @@ class World(object):
         self._velocity_right = 0
         self._running = False
         self._cjoints = ode.JointGroup()
+        self._event_handlers = [self]
 
     def _init_opengl(self):
         """
@@ -234,9 +388,7 @@ class World(object):
             r = geom.getRadius()
             glutSolidSphere(r, 20, 20)
         elif (isinstance(geom, ode.GeomCylinder)):
-            #print "draw a cylinder"
             r, h = geom.getParams()
-            #print "r=%s ; h=%s" % (r, h)
             glutSolidCylinder(r, h, 20, 20)
 
         glPopMatrix()
@@ -322,6 +474,10 @@ class World(object):
         glFlush()
         pygame.display.flip()
 
+    def _any_event(self, event):
+        if (event.type == pygame.QUIT):
+            self._running = False
+
     def _key_down(self, key):
         if (key == pygame.K_q):
             self._velocity_left = 10
@@ -340,20 +496,30 @@ class World(object):
         elif (key in (pygame.K_e, pygame.K_d)):
             self._velocity_right = 0.0
 
+    def register_event_handler(self, event_handler):
+        if (event_handler not in self._event_handlers):
+            self._event_handlers.append(event_handler)
+
     def do_events(self):
         """
         Process any input events.
         """
 
         events = pygame.event.get()
+        for event_handler in self._event_handlers:
+            event_handler.handle_events(events)
+            self._broadcaster.queue(event_handler.get_messages())
+        self._broadcaster.broadcast()
+        #for e in events:
+            #if (e.type == pygame.QUIT):
+                #self._running = False
+            #elif (e.type == pygame.KEYDOWN):
+                #self._key_down(e.key)
+            #elif (e.type == pygame.KEYUP):
+                #self._key_up(e.key)
 
-        for e in events:
-            if (e.type == pygame.QUIT):
-                self._running = False
-            elif (e.type == pygame.KEYDOWN):
-                self._key_down(e.key)
-            elif (e.type == pygame.KEYUP):
-                self._key_up(e.key)
+    def handle_message(self, wrapper_msg):
+        pass
 
     def _nearcb(self, args, geom1, geom2):
         """
@@ -389,8 +555,8 @@ class World(object):
             self.do_events()
 
             for robot in self._robots:
-                robot.velocity_left = self._velocity_left
-                robot.velocity_right = self._velocity_right
+                #robot.velocity_left = self._velocity_left
+                #robot.velocity_right = self._velocity_right
                 robot.update()
 
             self._space.collide((), self._nearcb)
@@ -400,6 +566,10 @@ class World(object):
 
             # Limit the FPS.
             clock.tick(self.fps)
+            # The approach works if the simulation could run faster than it
+            # is actally limited to which should work here because it is simple
+            # enough and in any case it is a little slower, it is not very
+            # important as we are only dealing with a simulator.
 
     def add(self, robot):
         self._robots.append(robot)
@@ -421,9 +591,15 @@ class World(object):
 
 
 def main():
-    world = World()
-    robot = Robot()
+    broadcaster = Broadcaster()
+    world = World(broadcaster)
+    descriptor = TankDescriptor(0)
+    robot = Tank(descriptor)
+    robot_event_handler = TankEventHandler(descriptor)
     world.add(robot)
+    world.register_event_handler(robot_event_handler)
+    broadcaster.register_listener(robot)
+    broadcaster.register_listener(world)
     world.run()
 
 if (__name__ == '__main__'):
