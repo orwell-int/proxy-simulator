@@ -143,9 +143,7 @@ class Robot(object):
         self._velocity_right = value
 
     def update(self):
-        #self._left_wheel_joint.setParam(ode.ParamVel2, self._velocity_left)
         self._left_wheel_joint.setParam(ode.ParamVel, self._velocity_left)
-        #self._right_wheel_joint.setParam(ode.ParamVel2, self._velocity_right)
         self._right_wheel_joint.setParam(ode.ParamVel, self._velocity_right)
 
 
@@ -163,7 +161,7 @@ class World(object):
         self._geoms = []
         self._bodies = []
 
-        self._initOpenGL()
+        self._init_opengl()
         self._init_ode()
         self._robots = []
         self._velocity_left = 0
@@ -171,7 +169,7 @@ class World(object):
         self._running = False
         self._cjoints = ode.JointGroup()
 
-    def _initOpenGL(self):
+    def _init_opengl(self):
         """
         Initialise the scene.
         """
@@ -196,9 +194,9 @@ class World(object):
         self._world = ode.World()
         self._world.setGravity((0, -9.81, 0))
         self._space = ode.Space()
-        self._floor = ode.GeomPlane(self._space, (0, 1, 0), 0)
+        self._floor = ode.GeomPlane(self._space, (0, 1, 0), -1)
 
-    def _extractMatrix(self, geom):
+    def _extract_matrix(self, geom):
         """
         Return a 4x4 matrix (represented by a 16-element tuple) created by
         combining the geom's rotation matrix and position.
@@ -211,7 +209,7 @@ class World(object):
                 rot[2], rot[5], rot[8], 0.0,
                 x, y, z, 1.0)
 
-    def _renderGeom(self, geom):
+    def _render_geom(self, geom):
         """
         Render either a ode.GeomBox or ode.GeomSphere object.
         """
@@ -224,7 +222,7 @@ class World(object):
             return
 
         glPushMatrix()
-        glMultMatrixd(self._extractMatrix(geom))
+        glMultMatrixd(self._extract_matrix(geom))
 
         glMaterialfv(GL_FRONT, GL_SPECULAR, (0.0, 0.0, 0.0))
 
@@ -243,7 +241,7 @@ class World(object):
 
         glPopMatrix()
 
-    def _renderGround(self):
+    def _render_ground(self):
         """
         Renders the ground plane.
         """
@@ -273,7 +271,7 @@ class World(object):
 
         glPopMatrix()
 
-    def _setCamera(self):
+    def _set_camera(self):
         """
         Position the camera to C{self.cameraDistance} units behind the
         vehicle's current position and rotated depending on the mouse position.
@@ -314,17 +312,17 @@ class World(object):
         """
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        self._renderGround()
+        self._render_ground()
 
-        self._setCamera()
+        self._set_camera()
         #print "len(self._geoms) =", len(self._geoms)
         for geom in self._geoms:
-            self._renderGeom(geom)
+            self._render_geom(geom)
 
         glFlush()
         pygame.display.flip()
 
-    def _keyDown(self, key):
+    def _key_down(self, key):
         if (key == pygame.K_q):
             self._velocity_left = 10
         elif (key == pygame.K_a):
@@ -336,13 +334,13 @@ class World(object):
         elif (key == pygame.K_ESCAPE):
             self._running = False
 
-    def _keyUp(self, key):
+    def _key_up(self, key):
         if (key in (pygame.K_q, pygame.K_a)):
             self._velocity_left = 0.0
         elif (key in (pygame.K_e, pygame.K_d)):
             self._velocity_right = 0.0
 
-    def doEvents(self):
+    def do_events(self):
         """
         Process any input events.
         """
@@ -353,9 +351,9 @@ class World(object):
             if (e.type == pygame.QUIT):
                 self._running = False
             elif (e.type == pygame.KEYDOWN):
-                self._keyDown(e.key)
+                self._key_down(e.key)
             elif (e.type == pygame.KEYUP):
-                self._keyUp(e.key)
+                self._key_up(e.key)
 
     def _nearcb(self, args, geom1, geom2):
         """
@@ -388,19 +386,12 @@ class World(object):
         self._running = True
 
         while self._running:
-            self.doEvents()
+            self.do_events()
 
             for robot in self._robots:
                 robot.velocity_left = self._velocity_left
                 robot.velocity_right = self._velocity_right
                 robot.update()
-            ## Steering
-            #self.wheel1.setParam(ode.ParamVel, self._turn)
-
-            ## Engine
-            #self.wheel1.setParam(ode.ParamVel2, self._vel)
-            #self.wheel2.setParam(ode.ParamVel2, self._vel)
-            #self.wheel3.setParam(ode.ParamVel2, self._vel)
 
             self._space.collide((), self._nearcb)
             self._world.step(1 / self.fps)
