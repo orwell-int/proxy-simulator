@@ -11,9 +11,9 @@ class Tank(object):
     def __init__(self, robot_descriptor):
         self._velocity_left = 0
         self._velocity_right = 0
-        self._left_wheel_body = None
-        self._right_wheel_body = None
         self._robot_descriptor = robot_descriptor
+        self._left_wheel_joints = []
+        self._right_wheel_joints = []
 
     def create_objects(self, world):
         print 'chassis'
@@ -42,49 +42,49 @@ class Tank(object):
         # left wheel
         radius = 1
         height = 0.2
-        px, py, pz = (4, 0, -4)
-        self._left_wheel_body = ode.Body(world.world)
+        px, py, pz = (lx / 2, 0, -(lz / 2))
+        left_wheel_body = ode.Body(world.world)
         wheel_mass = ode.Mass()
         #wheel_mass.setSphere(density, radius)
         wheel_mass.setCylinder(density, 1, radius, height)
-        self._left_wheel_body.setMass(wheel_mass)
+        left_wheel_body.setMass(wheel_mass)
         #left_wheel_geom = ode.GeomSphere(world.space, radius=radius)
         left_wheel_geom = ode.GeomCylinder(world.space, radius=radius,
                                            length=height)
-        left_wheel_geom.setBody(self._left_wheel_body)
-        #self._left_wheel_body.setPosition((px, py, pz))
-        self._left_wheel_body.setRotation((0, 0, 1,
-                                           0, 1, 0,
-                                           -1, 0, 0))
-        self._left_wheel_body.setPosition((px - height / 2, py, pz))
-        world.add_body(self._left_wheel_body)
+        left_wheel_geom.setBody(left_wheel_body)
+        #left_wheel_body.setPosition((px, py, pz))
+        left_wheel_body.setRotation((0, 0, 1,
+                                     0, 1, 0,
+                                     -1, 0, 0))
+        left_wheel_body.setPosition((px - height / 2, py, pz))
+        world.add_body(left_wheel_body)
         world.add_geom(left_wheel_geom)
 
         print 'right wheel'
         # right wheel
         #radius = 1
-        px = -4
-        self._right_wheel_body = ode.Body(world.world)
+        px = -lx / 2
+        right_wheel_body = ode.Body(world.world)
         wheel_mass = ode.Mass()
         #wheel_mass.setSphere(density, radius)
         wheel_mass.setCylinder(density, 1, radius, height)
-        self._right_wheel_body.setMass(wheel_mass)
+        right_wheel_body.setMass(wheel_mass)
         #right_wheel_geom = ode.GeomSphere(world.space, radius=radius)
         right_wheel_geom = ode.GeomCylinder(world.space, radius=radius,
                                             length=height)
-        right_wheel_geom.setBody(self._right_wheel_body)
-        #self._right_wheel_body.setPosition((px, py, pz))
-        self._right_wheel_body.setRotation((0, 0, 1,
-                                            0, 1, 0,
-                                            -1, 0, 0))
-        self._right_wheel_body.setPosition((px - height / 2, py, pz))
-        world.add_body(self._right_wheel_body)
+        right_wheel_geom.setBody(right_wheel_body)
+        #right_wheel_body.setPosition((px, py, pz))
+        right_wheel_body.setRotation((0, 0, 1,
+                                      0, 1, 0,
+                                      -1, 0, 0))
+        right_wheel_body.setPosition((px - height / 2, py, pz))
+        world.add_body(right_wheel_body)
         world.add_geom(right_wheel_geom)
 
         print 'front wheel'
         # front wheel
         #radius = 1
-        px, py, pz = (0, 0, 4)
+        px, py, pz = (0, 0, lz / 2)
         front_wheel_body = ode.Body(world.world)
         wheel_mass = ode.Mass()
         wheel_mass.setSphere(density, radius)
@@ -95,33 +95,35 @@ class Tank(object):
         world.add_body(front_wheel_body)
         world.add_geom(front_wheel_geom)
 
-        #self._left_wheel_joint = ode.Hinge2Joint(world.world)
-        self._left_wheel_joint = ode.HingeJoint(world.world)
-        self._left_wheel_joint.attach(body, self._left_wheel_body)
-        self._left_wheel_joint.setAnchor(self._left_wheel_body.getPosition())
-        self._left_wheel_joint.setAxis((-1, 0, 0))
-        #self._left_wheel_joint.setAxis1((0, 1, 0))
-        #self._left_wheel_joint.setAxis2((1, 0, 0))
-        self._left_wheel_joint.setParam(ode.ParamFMax, 500000)
-        #self._left_wheel_joint.setParam(ode.ParamLoStop, 0)
-        #self._left_wheel_joint.setParam(ode.ParamHiStop, 0)
-        #self._left_wheel_joint.setParam(ode.ParamFMax2, 0.1)
-        #self._left_wheel_joint.setParam(ode.ParamSuspensionERP, 0.2)
-        #self._left_wheel_joint.setParam(ode.ParamSuspensionCFM, 0.1)
+        #left_wheel_joint = ode.Hinge2Joint(world.world)
+        left_wheel_joint = ode.HingeJoint(world.world)
+        left_wheel_joint.attach(body, left_wheel_body)
+        left_wheel_joint.setAnchor(left_wheel_body.getPosition())
+        left_wheel_joint.setAxis((-1, 0, 0))
+        #left_wheel_joint.setAxis1((0, 1, 0))
+        #left_wheel_joint.setAxis2((1, 0, 0))
+        left_wheel_joint.setParam(ode.ParamFMax, 500000)
+        #left_wheel_joint.setParam(ode.ParamLoStop, 0)
+        #left_wheel_joint.setParam(ode.ParamHiStop, 0)
+        #left_wheel_joint.setParam(ode.ParamFMax2, 0.1)
+        #left_wheel_joint.setParam(ode.ParamSuspensionERP, 0.2)
+        #left_wheel_joint.setParam(ode.ParamSuspensionCFM, 0.1)
+        self._left_wheel_joints.append(left_wheel_joint)
 
-        #self._right_wheel_joint = ode.Hinge2Joint(world.world)
-        self._right_wheel_joint = ode.HingeJoint(world.world)
-        self._right_wheel_joint.attach(body, self._right_wheel_body)
-        self._right_wheel_joint.setAnchor(self._right_wheel_body.getPosition())
-        self._right_wheel_joint.setAxis((-1, 0, 0))
-        #self._right_wheel_joint.setAxis1((0, 1, 0))
-        #self._right_wheel_joint.setAxis2((1, 0, 0))
-        self._right_wheel_joint.setParam(ode.ParamFMax, 500000)
-        #self._right_wheel_joint.setParam(ode.ParamLoStop, 0)
-        #self._right_wheel_joint.setParam(ode.ParamHiStop, 0)
-        #self._right_wheel_joint.setParam(ode.ParamFMax2, 0.1)
-        #self._right_wheel_joint.setParam(ode.ParamSuspensionERP, 0.2)
-        #self._right_wheel_joint.setParam(ode.ParamSuspensionCFM, 0.1)
+        #right_wheel_joint = ode.Hinge2Joint(world.world)
+        right_wheel_joint = ode.HingeJoint(world.world)
+        right_wheel_joint.attach(body, right_wheel_body)
+        right_wheel_joint.setAnchor(right_wheel_body.getPosition())
+        right_wheel_joint.setAxis((-1, 0, 0))
+        #right_wheel_joint.setAxis1((0, 1, 0))
+        #right_wheel_joint.setAxis2((1, 0, 0))
+        right_wheel_joint.setParam(ode.ParamFMax, 500000)
+        #right_wheel_joint.setParam(ode.ParamLoStop, 0)
+        #right_wheel_joint.setParam(ode.ParamHiStop, 0)
+        #right_wheel_joint.setParam(ode.ParamFMax2, 0.1)
+        #right_wheel_joint.setParam(ode.ParamSuspensionERP, 0.2)
+        #right_wheel_joint.setParam(ode.ParamSuspensionCFM, 0.1)
+        self._right_wheel_joints.append(right_wheel_joint)
 
         front_wheel_joint = ode.BallJoint(world.world)
         front_wheel_joint.attach(body, front_wheel_body)
@@ -145,8 +147,10 @@ class Tank(object):
         self._velocity_right = value
 
     def update(self):
-        self._left_wheel_joint.setParam(ode.ParamVel, self._velocity_left)
-        self._right_wheel_joint.setParam(ode.ParamVel, self._velocity_right)
+        for left_wheel_joint in self._left_wheel_joints:
+            left_wheel_joint.setParam(ode.ParamVel, self._velocity_left)
+        for right_wheel_joint in self._right_wheel_joints:
+            right_wheel_joint.setParam(ode.ParamVel, self._velocity_right)
 
     def handle_message(self, wrapper_msg):
         if (self._robot_descriptor.recipient == wrapper_msg.recipient):
@@ -154,6 +158,201 @@ class Tank(object):
                     self._robot_descriptor.get_movement(wrapper_msg)
             self.velocity_left = 10 * left
             self.velocity_right = 10 * right
+
+
+class TankWithSpheres(Tank):
+    def __init__(self, robot_descriptor):
+        super(TankWithSpheres, self).__init__(robot_descriptor)
+
+    def create_objects(self, world):
+        print 'chassis'
+        # chassis
+        density = 10
+        lx, ly, lz = (8, 0.5, 8)
+        # Create body
+        body = ode.Body(world.world)
+        mass = ode.Mass()
+        mass.setBox(density, lx, ly, lz)
+        body.setMass(mass)
+
+        # Set parameters for drawing the body
+        body.shape = "box"
+        body.boxsize = (lx, ly, lz)
+
+        # Create a box geom for collision detection
+        geom = ode.GeomBox(world.space, lengths=body.boxsize)
+        geom.setBody(body)
+        #body.setPosition((0, 3, 0))
+        world.add_body(body)
+        world.add_geom(geom)
+
+        density = 1
+        print 'left wheel'
+        # left wheel
+        radius = 1
+        height = 0.2
+        px, py, pz = (lx / 2, 0, -(lz / 2))
+        left_wheel_body = ode.Body(world.world)
+        wheel_mass = ode.Mass()
+        wheel_mass.setSphere(density, radius)
+        left_wheel_body.setMass(wheel_mass)
+        left_wheel_geom = ode.GeomSphere(world.space, radius=radius)
+        left_wheel_geom.setBody(left_wheel_body)
+        left_wheel_body.setPosition((px, py, pz))
+        world.add_body(left_wheel_body)
+        world.add_geom(left_wheel_geom)
+
+        print 'right wheel'
+        # right wheel
+        #radius = 1
+        px = -(lx / 2)
+        right_wheel_body = ode.Body(world.world)
+        wheel_mass = ode.Mass()
+        wheel_mass.setSphere(density, radius)
+        right_wheel_body.setMass(wheel_mass)
+        right_wheel_geom = ode.GeomSphere(world.space, radius=radius)
+        right_wheel_geom.setBody(right_wheel_body)
+        right_wheel_body.setPosition((px, py, pz))
+        world.add_body(right_wheel_body)
+        world.add_geom(right_wheel_geom)
+
+        print 'front wheel'
+        # front wheel
+        #radius = 1
+        px, py, pz = (0, 0, lz / 2)
+        front_wheel_body = ode.Body(world.world)
+        wheel_mass = ode.Mass()
+        wheel_mass.setSphere(density, radius)
+        front_wheel_body.setMass(wheel_mass)
+        front_wheel_geom = ode.GeomSphere(world.space, radius=radius)
+        front_wheel_geom.setBody(front_wheel_body)
+        front_wheel_body.setPosition((px, py, pz))
+        world.add_body(front_wheel_body)
+        world.add_geom(front_wheel_geom)
+
+        left_wheel_joint = ode.HingeJoint(world.world)
+        left_wheel_joint.attach(body, left_wheel_body)
+        left_wheel_joint.setAnchor(left_wheel_body.getPosition())
+        left_wheel_joint.setAxis((-1, 0, 0))
+        left_wheel_joint.setParam(ode.ParamFMax, 500000)
+        self._left_wheel_joints.append(left_wheel_joint)
+
+        right_wheel_joint = ode.HingeJoint(world.world)
+        right_wheel_joint.attach(body, right_wheel_body)
+        right_wheel_joint.setAnchor(right_wheel_body.getPosition())
+        right_wheel_joint.setAxis((-1, 0, 0))
+        right_wheel_joint.setParam(ode.ParamFMax, 500000)
+        self._right_wheel_joints.append(right_wheel_joint)
+
+        front_wheel_joint = ode.BallJoint(world.world)
+        front_wheel_joint.attach(body, front_wheel_body)
+        front_wheel_joint.setAnchor(front_wheel_body.getPosition())
+        front_wheel_joint.setParam(ode.ParamFMax, 5000)
+
+
+class TankWithCheapTracks(Tank):
+    def __init__(self, robot_descriptor):
+        super(TankWithCheapTracks, self).__init__(robot_descriptor)
+
+    def create_objects(self, world):
+        print 'chassis'
+        # chassis
+        density = 40
+        lx, ly, lz = (6, 0.5, 8)
+        # Create body
+        body = ode.Body(world.world)
+        mass = ode.Mass()
+        mass.setBox(density, lx, ly, lz)
+        body.setMass(mass)
+
+        # Set parameters for drawing the body
+        body.shape = "box"
+        body.boxsize = (lx, ly, lz)
+
+        # Create a box geom for collision detection
+        geom = ode.GeomBox(world.space, lengths=body.boxsize)
+        geom.setBody(body)
+        #body.setPosition((0, 3, 0))
+        world.add_body(body)
+        world.add_geom(geom)
+
+        fmax = 5000 * 2
+        density = 0.1
+        print 'left wheels'
+        # left wheel
+        radius = 1
+        height = 0.8
+        px = lx / 2
+        py = 0
+        for pz in (-(lz / 2), 0, lz / 2):
+            # cylinders
+            left_wheel_body = ode.Body(world.world)
+            wheel_mass = ode.Mass()
+            wheel_mass.setCylinder(density, 1, radius, height)
+            left_wheel_body.setMass(wheel_mass)
+            left_wheel_geom = ode.GeomCylinder(world.space, radius=radius,
+                                               length=height)
+            left_wheel_geom.setBody(left_wheel_body)
+            left_wheel_body.setRotation((0, 0, 1,
+                                         0, 1, 0,
+                                         -1, 0, 0))
+            left_wheel_body.setPosition((px - height / 2, py, pz))
+
+            # spheres
+            #left_wheel_body = ode.Body(world.world)
+            #wheel_mass = ode.Mass()
+            #wheel_mass.setSphere(density, radius)
+            #left_wheel_body.setMass(wheel_mass)
+            #left_wheel_geom = ode.GeomSphere(world.space, radius=radius)
+            #left_wheel_geom.setBody(left_wheel_body)
+            #left_wheel_body.setPosition((px, py, pz))
+
+            world.add_body(left_wheel_body)
+            world.add_geom(left_wheel_geom)
+
+            left_wheel_joint = ode.HingeJoint(world.world)
+            left_wheel_joint.attach(body, left_wheel_body)
+            left_wheel_joint.setAnchor(left_wheel_body.getPosition())
+            left_wheel_joint.setAxis((-1, 0, 0))
+            left_wheel_joint.setParam(ode.ParamFMax, fmax)
+            self._left_wheel_joints.append(left_wheel_joint)
+
+        print 'right wheels'
+        # right wheel
+        #radius = 1
+        px = -(lx / 2)
+        for pz in (-(lz / 2), 0, lz / 2):
+            # cylinders
+            right_wheel_body = ode.Body(world.world)
+            wheel_mass = ode.Mass()
+            wheel_mass.setCylinder(density, 1, radius, height)
+            right_wheel_body.setMass(wheel_mass)
+            right_wheel_geom = ode.GeomCylinder(world.space, radius=radius,
+                                               length=height)
+            right_wheel_geom.setBody(right_wheel_body)
+            right_wheel_body.setRotation((0, 0, 1,
+                                          0, 1, 0,
+                                          -1, 0, 0))
+            right_wheel_body.setPosition((px - height / 2, py, pz))
+
+            # spheres
+            #right_wheel_body = ode.Body(world.world)
+            #wheel_mass = ode.Mass()
+            #wheel_mass.setSphere(density, radius)
+            #right_wheel_body.setMass(wheel_mass)
+            #right_wheel_geom = ode.GeomSphere(world.space, radius=radius)
+            #right_wheel_geom.setBody(right_wheel_body)
+            #right_wheel_body.setPosition((px, py, pz))
+
+            world.add_body(right_wheel_body)
+            world.add_geom(right_wheel_geom)
+
+            right_wheel_joint = ode.HingeJoint(world.world)
+            right_wheel_joint.attach(body, right_wheel_body)
+            right_wheel_joint.setAnchor(right_wheel_body.getPosition())
+            right_wheel_joint.setAxis((-1, 0, 0))
+            right_wheel_joint.setParam(ode.ParamFMax, fmax)
+            self._right_wheel_joints.append(right_wheel_joint)
 
 
 class TankDescriptor(object):
@@ -299,14 +498,61 @@ class Broadcaster(object):
                 listener.handle_message(wrapper_msg)
 
 
+def cross_product(v1, v2):
+    return (
+            v1[1] * v2[2] - v1[2] * v2[1],
+            v1[2] * v2[0] - v1[0] * v2[2],
+            v1[0] * v2[1] - v1[1] * v2[0]
+            )
+
+
+def normalise(vector):
+    if (all(((0 == coord) for coord in vector))):
+        return None
+    length_p2 = vector[0] ** 2 + vector[1] ** 2 + vector[2] ** 2
+    length = length_p2 ** 0.5
+    return (vector[0] / length, vector[1] / length, vector[2] / length)
+
+
+def project_on_plane(normal, distance, point):
+    """
+    Project a point on a plance defined by a normal and a distance to the
+    origin following a line parallel to the normal.
+    equation of the plane:
+        normal[0] * x + normal[1] * y + normal[2] * z + distance = 0
+    `normal`: normal of the plance.
+    `distance`: distance to the origin.
+    `point`: the point to project (projection parallel to the normal).
+    """
+    up = (normal[0] * point[0] + normal[1] * point[1] + normal[2] * point[2])
+    down = normal[0] ** 2 + normal[1] ** 2 + normal[2] ** 2
+    t = - up / down
+    projected = (
+        point[0] + normal[0] * t,
+        point[1] + normal[1] * t,
+        point[2] + normal[2] * t
+    )
+    return projected
+
+
+def add(v1, v2):
+    return (v1[0] + v2[0], v1[1] + v2[1], v1[2] + v2[2])
+
+
+def vec_mul(vector, factor):
+    return (vector[0] * factor, vector[1] * factor, vector[2] * factor)
+
+
 class World(BaseEventHandler):
     cameraDistance = 10.0
     clip = 100.0
     fps = 50.0
 
-    def __init__(self, broadcaster, resolution=(1024, 768)):
+    def __init__(self, broadcaster, resolution=(1024, 768),
+                 draw_helpers=False):
         self._resolution = resolution
         self._broadcaster = broadcaster
+        self._draw_helpers = draw_helpers
         self._xRot = 0.0
         self._yRot = 0.0
         self._xCoeff = 360.0 / self._resolution[0]
@@ -322,6 +568,7 @@ class World(BaseEventHandler):
         self._running = False
         self._cjoints = ode.JointGroup()
         self._event_handlers = [self]
+        self._helpers = []
 
     def _init_opengl(self):
         """
@@ -348,7 +595,9 @@ class World(BaseEventHandler):
         self._world = ode.World()
         self._world.setGravity((0, -9.81, 0))
         self._space = ode.Space()
-        self._floor = ode.GeomPlane(self._space, (0, 1, 0), -1)
+        self._floor = ode.GeomPlane(self._space, (0.1, 1, 0), -2)
+        #self._floor = ode.GeomPlane(self._space, (0, 1, 0.1), -2)
+        #self._floor = ode.GeomPlane(self._space, (0, 1, 0), -1)
 
     def _extract_matrix(self, geom):
         """
@@ -368,6 +617,7 @@ class World(BaseEventHandler):
         Render either a ode.GeomBox or ode.GeomSphere object.
         """
 
+        #allowed = [ode.GeomSphere, ode.GeomCylinder]
         allowed = [ode.GeomBox, ode.GeomSphere, ode.GeomCylinder]
         ok = False
         for klass in allowed:
@@ -393,6 +643,20 @@ class World(BaseEventHandler):
 
         glPopMatrix()
 
+    def _render_helper(self, helper):
+        """
+        """
+        coords, color = helper
+        glPushMatrix()
+        glMultMatrixd((1, 0, 0, 0,
+                       0, 1, 0, 0,
+                       0, 0, 1, 0,
+                       coords[0], coords[1], coords[2], 1))
+
+        glMaterialfv(GL_FRONT, GL_SPECULAR, (color[0], color[1], color[2]))
+        glutSolidSphere(0.2, 20, 20)
+        glPopMatrix()
+
     def _render_ground(self):
         """
         Renders the ground plane.
@@ -412,13 +676,21 @@ class World(BaseEventHandler):
         glBegin(GL_QUADS)
         glColor3f(0.0, 1.0, 0.0)
         glNormal3f(*normal)
-        glVertex3f(-self.clip, d, -self.clip)
+        glVertex3f(*add(project_on_plane(normal, d,
+            (-self.clip, 0, -self.clip)), vec_mul(normal, d)))
+        #glVertex3f(-self.clip, d, -self.clip)
         glNormal3f(*normal)
-        glVertex3f(self.clip, d, -self.clip)
+        glVertex3f(*add(project_on_plane(normal, d,
+            (self.clip, 0, -self.clip)), vec_mul(normal, d)))
+        #glVertex3f(self.clip, d, -self.clip)
         glNormal3f(*normal)
-        glVertex3f(self.clip, d, self.clip)
+        glVertex3f(*add(project_on_plane(normal, d,
+            (self.clip, 0, self.clip)), vec_mul(normal, d)))
+        #glVertex3f(self.clip, d, self.clip)
         glNormal3f(*normal)
-        glVertex3f(-self.clip, d, self.clip)
+        glVertex3f(*add(project_on_plane(normal, d,
+            (-self.clip, 0, self.clip)), vec_mul(normal, d)))
+        #glVertex3f(-self.clip, d, self.clip)
         glEnd()
 
         glPopMatrix()
@@ -471,6 +743,11 @@ class World(BaseEventHandler):
         for geom in self._geoms:
             self._render_geom(geom)
 
+        if (self._draw_helpers):
+            for helper in self._helpers:
+                self._render_helper(helper)
+        del self._helpers[:]
+
         glFlush()
         pygame.display.flip()
 
@@ -521,6 +798,12 @@ class World(BaseEventHandler):
     def handle_message(self, wrapper_msg):
         pass
 
+    def _make_simple_contact(self, contact, body1, body2):
+        contact.setBounce(0.2)
+        contact.setMu(10000)
+        joint = ode.ContactJoint(self.world, self._cjoints, contact)
+        joint.attach(body1, body2)
+
     def _nearcb(self, args, geom1, geom2):
         """
         Create contact joints between colliding geoms.
@@ -537,11 +820,68 @@ class World(BaseEventHandler):
 
         contacts = ode.collide(geom1, geom2)
 
-        for c in contacts:
-            c.setBounce(0.2)
-            c.setMu(10000)
-            j = ode.ContactJoint(self.world, self._cjoints, c)
-            j.attach(body1, body2)
+        floor_found = False
+        other_geom = None
+        for geom in (geom1, geom2):
+            if (floor_found):
+                other_geom = geom
+            if (self._floor == geom):
+                floor_found = True
+            else:
+                other_geom = geom
+        contacts_generated = False
+        if (floor_found):
+            allowed = (ode.GeomSphere, ode.GeomCylinder)
+            ok = False
+            for klass in allowed:
+                ok = ok or isinstance(other_geom, klass)
+            if (ok):
+                # we have found a wheel touching the floor
+                body = other_geom.getBody()
+                wheel_axis_local = (0, 0, 1)
+                wheel_axis_world = body.vectorToWorld(wheel_axis_local)
+                #wheel_axis_world = body.getRelPointPos(
+                        #body.vectorToWorld(wheel_axis_local))
+                #print "wheel_axis_world =", wheel_axis_world
+                self._helpers.append((wheel_axis_world, (1, 0, 0)))
+                #wheel_axis_world = (
+                        #body.getPosition()[0] - wheel_axis_world[0],
+                        #body.getPosition()[1] - wheel_axis_world[1],
+                        #body.getPosition()[2] - wheel_axis_world[2]
+                        #)
+                #print "wheel_axis_world =", wheel_axis_world
+                for contact in contacts:
+                    pos, normal, _, _, _ = contact.getContactGeomParams()
+                    axis = cross_product(normal, wheel_axis_world)
+                    axis = normalise(axis)
+                    if (axis is not None):
+                        wheel_axis_floor = cross_product(axis, normal)
+                        self._helpers.append((add(normal, pos),
+                                              (0, 1, 0)))
+                        self._helpers.append((add(wheel_axis_world, pos),
+                                              (0, 0, 1)))
+                        self._helpers.append((add(axis, pos),
+                                              (1, 0, 0)))
+                        contact.setFDir1(wheel_axis_floor)
+                        #contact.setFDir1(axis)
+                        contact.setMu(5000)
+                        contact.setMu2(10000)
+                        contact.setBounce(0.2)
+                        contact.setMode(ode.ContactFDir1 + ode.ContactMu2)
+                        joint = ode.ContactJoint(
+                            self.world, self._cjoints, contact)
+                        joint.attach(body1, body2)
+                    else:
+                        self._make_simple_contact(contact, body1, body2)
+                contacts_generated = True
+
+        if (not contacts_generated):
+            for c in contacts:
+                self._make_simple_contact(c, body1, body2)
+                #c.setBounce(0.2)
+                #c.setMu(10000)
+                #j = ode.ContactJoint(self.world, self._cjoints, c)
+                #j.attach(body1, body2)
 
     def run(self):
         """
@@ -594,7 +934,7 @@ def main():
     broadcaster = Broadcaster()
     world = World(broadcaster)
     descriptor = TankDescriptor(0)
-    robot = Tank(descriptor)
+    robot = TankWithCheapTracks(descriptor)
     robot_event_handler = TankEventHandler(descriptor)
     world.add(robot)
     world.register_event_handler(robot_event_handler)
