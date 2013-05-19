@@ -1,5 +1,6 @@
 import ode
 import pygame
+import math
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -256,14 +257,18 @@ class TankWithCheapTracks(Tank):
 
     def create_objects(self, world):
         print 'chassis'
+        fmax = 5000 * 1.6
+        scale = 0.04
         # chassis
-        density = 40
-        lx, ly, lz = (6, 0.5, 8)
+        density = 50.5
+        lx, ly, lz = (145 * scale, 10 * scale, 177 * scale)
         # Create body
         body = ode.Body(world.world)
         mass = ode.Mass()
         mass.setBox(density, lx, ly, lz)
         body.setMass(mass)
+        chassis_mass = lx * ly * lz * density
+        print "chassis mass =", chassis_mass
 
         # Set parameters for drawing the body
         body.shape = "box"
@@ -276,14 +281,15 @@ class TankWithCheapTracks(Tank):
         world.add_body(body)
         world.add_geom(geom)
 
-        fmax = 5000 * 2
-        density = 0.1
-        print 'left wheels'
+        density = 4
         # left wheel
-        radius = 1
-        height = 0.8
+        radius = 25 * scale
+        height = radius * 0.8
+        wheel_mass_ = math.pi * radius ** 2 * height * density
+        print "wheel mass =", wheel_mass_
         px = lx / 2
         py = 0
+        print 'left wheels'
         for pz in (-(lz / 2), 0, lz / 2):
             # cylinders
             left_wheel_body = ode.Body(world.world)
@@ -319,7 +325,6 @@ class TankWithCheapTracks(Tank):
 
         print 'right wheels'
         # right wheel
-        #radius = 1
         px = -(lx / 2)
         for pz in (-(lz / 2), 0, lz / 2):
             # cylinders
@@ -353,6 +358,8 @@ class TankWithCheapTracks(Tank):
             right_wheel_joint.setAxis((-1, 0, 0))
             right_wheel_joint.setParam(ode.ParamFMax, fmax)
             self._right_wheel_joints.append(right_wheel_joint)
+
+        print "total mass =", float(chassis_mass + 6 * wheel_mass_)
 
 
 class TankDescriptor(object):
@@ -864,7 +871,7 @@ class World(BaseEventHandler):
                                               (1, 0, 0)))
                         contact.setFDir1(wheel_axis_floor)
                         #contact.setFDir1(axis)
-                        contact.setMu(5000)
+                        contact.setMu(6000)
                         contact.setMu2(10000)
                         contact.setBounce(0.2)
                         contact.setMode(ode.ContactFDir1 + ode.ContactMu2)
