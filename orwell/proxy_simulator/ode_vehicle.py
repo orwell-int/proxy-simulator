@@ -15,6 +15,7 @@ class Tank(object):
         self._robot_descriptor = robot_descriptor
         self._left_wheel_joints = []
         self._right_wheel_joints = []
+        self._chassis_body = None
 
     def create_objects(self, world):
         print 'chassis'
@@ -37,6 +38,7 @@ class Tank(object):
         #body.setPosition((0, 3, 0))
         world.add_body(body)
         world.add_geom(geom)
+        self._chassis_body = body
 
         density = 1
         print 'left wheel'
@@ -160,6 +162,18 @@ class Tank(object):
             self.velocity_left = 10 * left
             self.velocity_right = 10 * right
 
+    @property
+    def camera(self):
+        up_local = (0, 3, 0)
+        up_world = self._chassis_body.vectorToWorld(up_local)
+        camera_position = self._chassis_body.getPosition()
+        camera_position = add(camera_position, up_world)
+        camera_at = self._chassis_body.vectorToWorld((0, 0, 1))
+        camera_at = add(camera_position, camera_at)
+        up_local = (0, 1, 0)
+        up_world = self._chassis_body.vectorToWorld(up_local)
+        return (camera_position, camera_at, up_world)
+
 
 class TankWithSpheres(Tank):
     def __init__(self, robot_descriptor):
@@ -186,6 +200,7 @@ class TankWithSpheres(Tank):
         #body.setPosition((0, 3, 0))
         world.add_body(body)
         world.add_geom(geom)
+        self._chassis_body = body
 
         density = 1
         print 'left wheel'
@@ -280,6 +295,7 @@ class TankWithCheapTracks(Tank):
         #body.setPosition((0, 3, 0))
         world.add_body(body)
         world.add_geom(geom)
+        self._chassis_body = body
 
         density = 4
         # left wheel
@@ -560,6 +576,8 @@ class World(BaseEventHandler):
         self._resolution = resolution
         self._broadcaster = broadcaster
         self._draw_helpers = draw_helpers
+        self._camera_giver = None
+        self._use_camera_giver = False
         self._xRot = 0.0
         self._yRot = 0.0
         self._xCoeff = 360.0 / self._resolution[0]
@@ -576,6 +594,14 @@ class World(BaseEventHandler):
         self._cjoints = ode.JointGroup()
         self._event_handlers = [self]
         self._helpers = []
+
+    @property
+    def camera_giver(self):
+        return self._camera_giver
+
+    @camera_giver.setter
+    def camera_giver(self, value):
+        self._camera_giver = value
 
     def _init_opengl(self):
         """
@@ -597,6 +623,24 @@ class World(BaseEventHandler):
         glEnable(GL_LIGHTING)
         glEnable(GL_NORMALIZE)
         glShadeModel(GL_FLAT)
+        self._init_textures()
+
+    def _init_textures(self):
+        #global texture
+        image = pygame.image.load(os.path.join("data", "checker.gif"))
+
+        ix = image.get_width()
+        iy = image.get_height()
+        image = pygame.image.tostring(image, "RGBX")
+
+        # Create Texture
+        texture_id = glGenTextures(1)
+        glBindTexture(GL_TEXTURE_2D, texture_id)
+
+        glTexImage2D(GL_TEXTURE_2D, 0, 3, ix, iy, 0,
+                     GL_RGBA, GL_UNSIGNED_BYTE, image)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
 
     def _init_ode(self):
         self._world = ode.World()
@@ -671,9 +715,11 @@ class World(BaseEventHandler):
 
         # Draw a quad at the position of the vehicle that extends to the
         # clipping planes.
+        glEnable(GL_TEXTURE_2D)
 
         normal, d = self._floor.getParams()
         #x, y, z = self.chassis.getPosition()
+        repetitions = 10
 
         glPushMatrix()
         #glTranslate(x, 0.0, z)
@@ -683,24 +729,33 @@ class World(BaseEventHandler):
         glBegin(GL_QUADS)
         glColor3f(0.0, 1.0, 0.0)
         glNormal3f(*normal)
-        glVertex3f(*add(project_on_plane(normal, d,
-            (-self.clip, 0, -self.clip)), vec_mul(normal, d)))
+        glTexCoord2f(0.0, 0.0)
+        glVertex3f(*add(
+            project_on_plane(normal, d, (-self.clip, 0, -self.clip)),
+            vec_mul(normal, d)))
         #glVertex3f(-self.clip, d, -self.clip)
         glNormal3f(*normal)
-        glVertex3f(*add(project_on_plane(normal, d,
-            (self.clip, 0, -self.clip)), vec_mul(normal, d)))
+        glTexCoord2f(repetitions, 0.0)
+        glVertex3f(*add(
+            project_on_plane(normal, d, (self.clip, 0, -self.clip)),
+            vec_mul(normal, d)))
         #glVertex3f(self.clip, d, -self.clip)
         glNormal3f(*normal)
-        glVertex3f(*add(project_on_plane(normal, d,
-            (self.clip, 0, self.clip)), vec_mul(normal, d)))
+        glTexCoord2f(repetitions, repetitions)
+        glVertex3f(*add(
+            project_on_plane(normal, d, (self.clip, 0, self.clip)),
+            vec_mul(normal, d)))
         #glVertex3f(self.clip, d, self.clip)
         glNormal3f(*normal)
-        glVertex3f(*add(project_on_plane(normal, d,
-            (-self.clip, 0, self.clip)), vec_mul(normal, d)))
+        glTexCoord2f(0.0, repetitions)
+        glVertex3f(*add(
+            project_on_plane(normal, d, (-self.clip, 0, self.clip)),
+            vec_mul(normal, d)))
         #glVertex3f(-self.clip, d, self.clip)
         glEnd()
 
         glPopMatrix()
+        glDisable(GL_TEXTURE_2D)
 
     def _set_camera(self):
         """
@@ -709,12 +764,6 @@ class World(BaseEventHandler):
         """
 
         aspect = float(self._resolution[0]) / float(self._resolution[1])
-
-        x, y = pygame.mouse.get_pos()
-        self._xRot = (y - self._resolution[1] / 2) * self._xCoeff
-        self._yRot = (x - self._resolution[0] / 2) * self._yCoeff
-        if (self._xRot < 0):
-            self._xRot = 0
 
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
@@ -728,10 +777,24 @@ class World(BaseEventHandler):
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
 
-        # Set the camera angle to view the vehicle
-        glTranslate(0.0, 0.0, -self.cameraDistance)
-        glRotate(self._xRot, 1, 0, 0)
-        glRotate(self._yRot, 0, 1, 0)
+        if ((self._camera_giver is None) or (not self._use_camera_giver)):
+            x, y = pygame.mouse.get_pos()
+            self._xRot = (y - self._resolution[1] / 2) * self._xCoeff
+            self._yRot = (x - self._resolution[0] / 2) * self._yCoeff
+            if (self._xRot < 0):
+                self._xRot = 0
+
+            # Set the camera angle to view the vehicle
+            glTranslate(0.0, 0.0, -self.cameraDistance)
+            glRotate(self._xRot, 1, 0, 0)
+            glRotate(self._yRot, 0, 1, 0)
+        else:
+            pos, at, up = self._camera_giver.camera
+            self._helpers.append((pos, (1, 0, 0)))
+            self._helpers.append((at, (0, 1, 0)))
+            self._helpers.append((add(pos, up), (0, 0, 1)))
+            gluLookAt(pos[0], pos[1], pos[2], at[0], at[1], at[2],
+                      up[0], up[1], up[2])
 
         ## Set the camera so that the vehicle is drawn in the correct place.
         #x, y, z = self.chassis.getPosition()
@@ -773,6 +836,8 @@ class World(BaseEventHandler):
             self._velocity_right = -10
         elif (key == pygame.K_ESCAPE):
             self._running = False
+        elif(key == pygame.K_SPACE):
+            self._use_camera_giver = not self._use_camera_giver
 
     def _key_up(self, key):
         if (key in (pygame.K_q, pygame.K_a)):
@@ -850,7 +915,7 @@ class World(BaseEventHandler):
                 #wheel_axis_world = body.getRelPointPos(
                         #body.vectorToWorld(wheel_axis_local))
                 #print "wheel_axis_world =", wheel_axis_world
-                self._helpers.append((wheel_axis_world, (1, 0, 0)))
+                #self._helpers.append((wheel_axis_world, (1, 0, 0)))
                 #wheel_axis_world = (
                         #body.getPosition()[0] - wheel_axis_world[0],
                         #body.getPosition()[1] - wheel_axis_world[1],
@@ -863,12 +928,12 @@ class World(BaseEventHandler):
                     axis = normalise(axis)
                     if (axis is not None):
                         wheel_axis_floor = cross_product(axis, normal)
-                        self._helpers.append((add(normal, pos),
-                                              (0, 1, 0)))
-                        self._helpers.append((add(wheel_axis_world, pos),
-                                              (0, 0, 1)))
-                        self._helpers.append((add(axis, pos),
-                                              (1, 0, 0)))
+                        #self._helpers.append((add(normal, pos),
+                                              #(0, 1, 0)))
+                        #self._helpers.append((add(wheel_axis_world, pos),
+                                              #(0, 0, 1)))
+                        #self._helpers.append((add(axis, pos),
+                                              #(1, 0, 0)))
                         contact.setFDir1(wheel_axis_floor)
                         #contact.setFDir1(axis)
                         contact.setMu(6000)
@@ -939,12 +1004,13 @@ class World(BaseEventHandler):
 
 def main():
     broadcaster = Broadcaster()
-    world = World(broadcaster)
+    world = World(broadcaster, draw_helpers=True)
     descriptor = TankDescriptor(0)
     robot = TankWithCheapTracks(descriptor)
     robot_event_handler = TankEventHandler(descriptor)
     world.add(robot)
     world.register_event_handler(robot_event_handler)
+    world.camera_giver = robot
     broadcaster.register_listener(robot)
     broadcaster.register_listener(world)
     world.run()
