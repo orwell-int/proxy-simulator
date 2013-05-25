@@ -521,6 +521,10 @@ class Broadcaster(object):
                 listener.handle_message(wrapper_msg)
 
 
+def dot_product(v1, v2):
+    return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2]
+
+
 def cross_product(v1, v2):
     return (
             v1[1] * v2[2] - v1[2] * v2[1],
@@ -530,6 +534,14 @@ def cross_product(v1, v2):
 
 
 def normalise(vector):
+    """
+    >>> print normalise((12, 0, 0))
+    (1.0, 0.0, 0.0)
+    >>> print normalise((4, 4, 0))
+    (0.7071067811865475, 0.7071067811865475, 0.0)
+    >>> print normalise((0, 0.2, 0.2))
+    (0.0, 0.7071067811865475, 0.7071067811865475)
+    """
     if (all(((0 == coord) for coord in vector))):
         return None
     length_p2 = vector[0] ** 2 + vector[1] ** 2 + vector[2] ** 2
@@ -543,11 +555,17 @@ def project_on_plane(normal, distance, point):
     origin following a line parallel to the normal.
     equation of the plane:
         normal[0] * x + normal[1] * y + normal[2] * z + distance = 0
-    `normal`: normal of the plance.
+    `normal`: normal of the plane.
     `distance`: distance to the origin.
     `point`: the point to project (projection parallel to the normal).
+    >>> normal = (0, 1, 0)
+    >>> distance = 1
+    >>> point = (0, 0, 0)
+    >>> print project_on_plane(normal, distance, point)
+    (0, -1, 0)
     """
-    up = (normal[0] * point[0] + normal[1] * point[1] + normal[2] * point[2])
+    up = (normal[0] * point[0] + normal[1] * point[1] + normal[2] * point[2] +
+          distance)
     down = normal[0] ** 2 + normal[1] ** 2 + normal[2] ** 2
     t = - up / down
     projected = (
@@ -563,7 +581,81 @@ def add(v1, v2):
 
 
 def vec_mul(vector, factor):
-    return (vector[0] * factor, vector[1] * factor, vector[2] * factor)
+    return (vector[0] * factor,
+            vector[1] * factor,
+            vector[2] * factor)
+
+
+def make_rotation_matrix(normal):
+    """
+    Compute a matrix to rotate vectors in a new base with #normal as the basis
+    for the y axis.
+    (i, j, k) is the original orthonormal base.
+    (i_, j_, k_) is the new orthonormal base.
+    >>> n = (0, 1, 0)
+    >>> print make_rotation_matrix(n)
+    ... # doctest: +NORMALIZE_WHITESPACE
+    (1.0, 0.0, 0.0,
+     0.0, 1.0, 0.0,
+     0.0, 0.0, 1.0)
+    >>> n = (0, 1, 0.2)
+    >>> print make_rotation_matrix(n)
+    ... # doctest: +NORMALIZE_WHITESPACE
+    (1.0, 0.0, 0.0, 0.0,
+     0.9805806756909201, -0.19611613513818404, -0.0,
+     0.19611613513818402, 0.9805806756909202)
+    """
+    i = (1, 0, 0)
+    j_ = normalise(normal)
+    k_ = normalise(cross_product(i, j_))
+    if (k_ is None):
+        k = (0, 0, 1)
+        i_ = normalise(cross_product(j_, k))
+        k_ = cross_product(i_, j_)
+    else:
+        i_ = cross_product(j_, k_)
+    rotation_matrix = (
+        i_[0], j_[0], k_[0],
+        i_[1], j_[1], k_[1],
+        i_[2], j_[2], k_[2]
+    )
+    return rotation_matrix
+
+
+def mat_mul(matrix, vector):
+    """
+    >>> i = (1, 0, 0, 0, 1, 0 ,0, 0, 1)
+    >>> v = (12, 32, 96)
+    >>> print mat_mul(i, v)
+    (12, 32, 96)
+    >>> rot = (0, 0, 1, 0, 1, 0, -1, 0, 0)
+    >>> print mat_mul(rot, v)
+    (96, 32, -12)
+    """
+    return (
+        matrix[0 + 3 * 0] * vector[0] +
+            matrix[1 + 3 * 0] * vector[1] +
+            matrix[2 + 3 * 0] * vector[2],
+        matrix[0 + 3 * 1] * vector[0] +
+            matrix[1 + 3 * 1] * vector[1] +
+            matrix[2 + 3 * 1] * vector[2],
+        matrix[0 + 3 * 2] * vector[0] +
+            matrix[1 + 3 * 2] * vector[1] +
+            matrix[2 + 3 * 2] * vector[2]
+        )
+
+
+def transpose(matrix):
+    """
+    >>> matrix = (11, 12, 13, 21, 22, 23, 31, 32, 33)
+    >>> print transpose(matrix)
+    (11, 21, 31, 12, 22, 32, 13, 23, 33)
+    """
+    return (
+        matrix[0], matrix[3], matrix[6],
+        matrix[1], matrix[4], matrix[7],
+        matrix[2], matrix[5], matrix[8]
+        )
 
 
 class World(BaseEventHandler):
@@ -646,8 +738,8 @@ class World(BaseEventHandler):
         self._world = ode.World()
         self._world.setGravity((0, -9.81, 0))
         self._space = ode.Space()
-        self._floor = ode.GeomPlane(self._space, (0.1, 1, 0), -2)
-        #self._floor = ode.GeomPlane(self._space, (0, 1, 0.1), -2)
+        self._floor = ode.GeomPlane(self._space, normalise((0.1, 1, 0)), -2)
+        #self._floor = ode.GeomPlane(self._space, normalise((0, 1, 0.1)), -2)
         #self._floor = ode.GeomPlane(self._space, (0, 1, 0), -1)
 
     def _extract_matrix(self, geom):
@@ -696,6 +788,9 @@ class World(BaseEventHandler):
 
     def _render_helper(self, helper):
         """
+        Draw a sphere.
+        `helper`: (coordinates, color). The color is a vector of three
+        values in the range [0..1].
         """
         coords, color = helper
         glPushMatrix()
@@ -717,9 +812,25 @@ class World(BaseEventHandler):
         # clipping planes.
         glEnable(GL_TEXTURE_2D)
 
+        far = 110.0
         normal, d = self._floor.getParams()
-        #x, y, z = self.chassis.getPosition()
-        repetitions = 10
+        repetitions = 11
+        rotation_matrix = make_rotation_matrix(normal)
+        if ((self._use_camera_giver) and (self._camera_giver is not None)):
+            # move the texture allong with the plane, since it is always drawn
+            # at the same relative position to the camera's projection on
+            # the plane
+            inverse_rotation_matrix = transpose(rotation_matrix)
+            camera_pos, _, _ = self._camera_giver.camera
+            projected_camera = project_on_plane(normal, d, camera_pos)
+            offset_camera = mat_mul(inverse_rotation_matrix, projected_camera)
+            offset_camera = add(offset_camera, vec_mul(normal, d))
+            offset_texture = vec_mul(offset_camera, repetitions / (2 * far))
+            otx = offset_texture[0]
+            oty = offset_texture[2]
+        else:
+            offset_camera = (0, 0, 0)
+            otx, oty = (0, 0)
 
         glPushMatrix()
         #glTranslate(x, 0.0, z)
@@ -729,29 +840,25 @@ class World(BaseEventHandler):
         glBegin(GL_QUADS)
         glColor3f(0.0, 1.0, 0.0)
         glNormal3f(*normal)
-        glTexCoord2f(0.0, 0.0)
-        glVertex3f(*add(
-            project_on_plane(normal, d, (-self.clip, 0, -self.clip)),
-            vec_mul(normal, d)))
-        #glVertex3f(-self.clip, d, -self.clip)
+        glTexCoord2f(0.0 + otx, 0.0 + oty)
+        glVertex3f(
+            *add(mat_mul(rotation_matrix, add((-far, 0, -far), offset_camera)),
+                 vec_mul(normal, d)))
         glNormal3f(*normal)
-        glTexCoord2f(repetitions, 0.0)
-        glVertex3f(*add(
-            project_on_plane(normal, d, (self.clip, 0, -self.clip)),
-            vec_mul(normal, d)))
-        #glVertex3f(self.clip, d, -self.clip)
+        glTexCoord2f(repetitions + otx, 0.0 + oty)
+        glVertex3f(
+            *add(mat_mul(rotation_matrix, add((far, 0, -far), offset_camera)),
+                 vec_mul(normal, d)))
         glNormal3f(*normal)
-        glTexCoord2f(repetitions, repetitions)
-        glVertex3f(*add(
-            project_on_plane(normal, d, (self.clip, 0, self.clip)),
-            vec_mul(normal, d)))
-        #glVertex3f(self.clip, d, self.clip)
+        glTexCoord2f(repetitions + otx, repetitions + oty)
+        glVertex3f(
+            *add(mat_mul(rotation_matrix, add((far, 0, far), offset_camera)),
+                 vec_mul(normal, d)))
         glNormal3f(*normal)
-        glTexCoord2f(0.0, repetitions)
-        glVertex3f(*add(
-            project_on_plane(normal, d, (-self.clip, 0, self.clip)),
-            vec_mul(normal, d)))
-        #glVertex3f(-self.clip, d, self.clip)
+        glTexCoord2f(0.0 + otx, repetitions + oty)
+        glVertex3f(
+            *add(mat_mul(rotation_matrix, add((-far, 0, far), offset_camera)),
+                 vec_mul(normal, d)))
         glEnd()
 
         glPopMatrix()
