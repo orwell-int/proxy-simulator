@@ -1,4 +1,8 @@
 import pygame
+import zmq
+import sys
+import time
+import datetime
 import orwell.proxy_simulator.version1_pb2 as pb_messages
 
 
@@ -110,6 +114,65 @@ class Broadcaster(object):
         while (self._messages):
             message = self._messages.pop(0)
             wrapper_msg = pb_messages.base_message()
-            wrapper_msg.ParseFromString(message)
-            for listener in self._listeners:
-                listener.handle_message(wrapper_msg)
+            try:
+                wrapper_msg.ParseFromString(message)
+                for listener in self._listeners:
+                    listener.handle_message(wrapper_msg)
+            except Exception as e:
+                print e
+
+
+class LocalEventDispatcher(Broadcaster):
+    def __init__(self):
+        super(LocalEventDispatcher, self).__init__()
+        self._event_handlers = []
+
+    def register_event_handler(self, event_handler):
+        if (event_handler not in self._event_handlers):
+            self._event_handlers.append(event_handler)
+
+    def step(self):
+        events = pygame.event.get()
+        for event_handler in self._event_handlers:
+            event_handler.handle_events(events)
+            self.queue(event_handler.get_messages())
+        self.broadcast()
+
+
+class CombinedDispatcher(Broadcaster):
+    def __init__(self, receiver_socket):
+        super(CombinedDispatcher, self).__init__()
+        self._event_handlers = []
+        self._receiver_socket = receiver_socket
+        self._string = None
+
+    def register_event_handler(self, event_handler):
+        if (event_handler not in self._event_handlers):
+            self._event_handlers.append(event_handler)
+
+    def step(self):
+        events = pygame.event.get()
+        for event_handler in self._event_handlers:
+            event_handler.handle_events(events)
+            self.queue(event_handler.get_messages())
+        start_time = datetime.datetime.now()
+        last_limit = start_time + datetime.timedelta(milliseconds=10)
+        string = None
+        #for _ in range(10):
+        while (True):
+            if (datetime.datetime.now() > last_limit):
+                break
+            try:
+                string = self._receiver_socket.recv(flags=zmq.DONTWAIT)
+                if ((self._string is None) or (string != self._string)):
+                    print "received message:" + string
+                    self._string = string
+                else:
+                    sys.stdout.write('.')
+            except zmq.ZMQError as e:
+                #print e
+                #time.sleep(0.001)
+                pass
+        if (self._string is not None):
+            self.queue([self._string])
+        self.broadcast()

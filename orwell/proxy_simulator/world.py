@@ -5,8 +5,6 @@ import OpenGL.GL as ogl
 import OpenGL.GLU as oglu
 import OpenGL.GLUT as oglut
 import orwell.proxy_simulator.maths as maths
-
-
 import orwell.proxy_simulator.communications as communications
 
 
@@ -15,10 +13,10 @@ class World(communications.BaseEventHandler):
     clip = 100.0
     fps = 50.0
 
-    def __init__(self, broadcaster, resolution=(1024, 768),
+    def __init__(self, event_dispatcher, resolution=(1024, 768),
                  draw_helpers=False):
         self._resolution = resolution
-        self._broadcaster = broadcaster
+        self._event_dispatcher = event_dispatcher
         self._draw_helpers = draw_helpers
         self._camera_giver = None
         self._use_camera_giver = False
@@ -36,7 +34,7 @@ class World(communications.BaseEventHandler):
         self._velocity_right = 0
         self._running = False
         self._cjoints = ode.JointGroup()
-        self._event_handlers = [self]
+        self._event_dispatcher.register_event_handler(self)
         self._helpers = []
 
     @property
@@ -324,28 +322,6 @@ class World(communications.BaseEventHandler):
         elif (key in (pygame.K_e, pygame.K_d)):
             self._velocity_right = 0.0
 
-    def register_event_handler(self, event_handler):
-        if (event_handler not in self._event_handlers):
-            self._event_handlers.append(event_handler)
-
-    def do_events(self):
-        """
-        Process any input events.
-        """
-
-        events = pygame.event.get()
-        for event_handler in self._event_handlers:
-            event_handler.handle_events(events)
-            self._broadcaster.queue(event_handler.get_messages())
-        self._broadcaster.broadcast()
-        #for e in events:
-            #if (e.type == pygame.QUIT):
-                #self._running = False
-            #elif (e.type == pygame.KEYDOWN):
-                #self._key_down(e.key)
-            #elif (e.type == pygame.KEYUP):
-                #self._key_up(e.key)
-
     def handle_message(self, wrapper_msg):
         pass
 
@@ -434,6 +410,25 @@ class World(communications.BaseEventHandler):
                 #j = ode.ContactJoint(self.world, self._cjoints, c)
                 #j.attach(body1, body2)
 
+    def step(self):
+        """
+        Perform a single step. This means processing the events, updating the
+        robots, stepping the physical simulation and rendering the scene.
+        This method is called in a loop by run, but you may call it from
+        outside, if you want to provide your own loop.
+        """
+        self._event_dispatcher.step()
+
+        for robot in self._robots:
+            #robot.velocity_left = self._velocity_left
+            #robot.velocity_right = self._velocity_right
+            robot.update()
+
+        self._space.collide((), self._nearcb)
+        self._world.step(1 / self.fps)
+        self._cjoints.empty()
+        self.render()
+
     def run(self):
         """
         Start the demo. This method will block until the demo exits.
@@ -443,17 +438,7 @@ class World(communications.BaseEventHandler):
         self._running = True
 
         while self._running:
-            self.do_events()
-
-            for robot in self._robots:
-                #robot.velocity_left = self._velocity_left
-                #robot.velocity_right = self._velocity_right
-                robot.update()
-
-            self._space.collide((), self._nearcb)
-            self._world.step(1 / self.fps)
-            self._cjoints.empty()
-            self.render()
+            self.step()
 
             # Limit the FPS.
             clock.tick(self.fps)
