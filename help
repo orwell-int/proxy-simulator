@@ -1,0 +1,44 @@
+# commands that may be used to test the simulator
+# install mandatory packages (mercurial is only needed for the vim install from sources)
+sudo apt-get update
+sudo apt-get install git
+sudo apt-get install python-dev
+sudo apt-get install mercurial
+sudo apt-get install make
+sudo apt-get install g++
+sudo apt-get install libsdl1.2-dev
+sudo apt-get install libsdl-image1.2-dev libsdl-sound1.2-dev libsdl-mixer1.2-dev
+sudo apt-get install libode-dev
+sudo apt-get install libsmpeg-dev
+sudo apt-get install libv4l-dev
+cd /usr/include/linux
+# patch needed for a python package (probably pygame)
+sudo ln -s ../libv4l1-videodev.h videodev.h
+cd -
+# you may chose a different way to install vim and protobuf
+git clone http://github.com/dchilot/germs.git
+cd germs
+echo -e "source ~/germs/germs/infect.sh\nsource ~/germs/germs/cure.sh" >> ~/.bashrc
+bash ./bootstrap.sh
+source env/bin/activate
+pip install -r requirements
+cd germs
+fab install:vim
+source ~/germs/germs/infect.sh
+source ~/germs/germs/cure.sh
+infect vim front
+fab install:protobuf
+infect protobuf
+# now deal with the project itself
+mkdir ~/orwell
+cd ~/orwell/
+git clone http://github.com/dchilot/proxy-simulator.git
+virtualenv venv
+deactivate
+source venv/bin/activate
+pip install -r requirements.txt
+export PYTHONPATH=$(pwd)
+git submodule init
+git submodule update
+source ./generate.sh
+./runner.sh
