@@ -39,12 +39,18 @@ class BaseTank(object):
         for right_wheel_joint in self._right_wheel_joints:
             right_wheel_joint.setParam(ode.ParamVel, self._velocity_right)
 
-    def handle_message(self, wrapper_msg):
-        if (self._robot_descriptor.recipient == wrapper_msg.recipient):
-            left, right = \
-                    self._robot_descriptor.get_movement(wrapper_msg)
-            self.velocity_left = 10 * left
-            self.velocity_right = 10 * right
+    def handle_message(self, recipient, payload):
+        if (self._robot_descriptor.recipient == recipient):
+            wrapper_msg = pb_messages.base_message()
+            try:
+                wrapper_msg.ParseFromString(payload)
+            except Exception as e:
+                print e
+            else:
+                left, right = \
+                        self._robot_descriptor.get_movement(wrapper_msg)
+                self.velocity_left = 10 * left
+                self.velocity_right = 10 * right
 
     @property
     def camera(self):
@@ -193,7 +199,6 @@ class TankDescriptor(object):
         wrapper_msg = pb_messages.base_message()
         wrapper_msg.message_type = "MOVE_TANK"
         wrapper_msg.serialized_message = sub_msg.SerializeToString()
-        wrapper_msg.recipient = self._recipient
         return wrapper_msg.SerializeToString()
 
     def get_movement(self, wrapper_msg):

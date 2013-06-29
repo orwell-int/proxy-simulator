@@ -113,13 +113,9 @@ class Broadcaster(object):
         """
         while (self._messages):
             message = self._messages.pop(0)
-            wrapper_msg = pb_messages.base_message()
-            try:
-                wrapper_msg.ParseFromString(message)
-                for listener in self._listeners:
-                    listener.handle_message(wrapper_msg)
-            except Exception as e:
-                print e
+            recipient, _, payload = message.partition(' ')
+            for listener in self._listeners:
+                listener.handle_message(recipient, payload)
 
 
 class LocalEventDispatcher(Broadcaster):

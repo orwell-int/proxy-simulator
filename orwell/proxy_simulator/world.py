@@ -322,7 +322,7 @@ class World(communications.BaseEventHandler):
         elif (key in (pygame.K_e, pygame.K_d)):
             self._velocity_right = 0.0
 
-    def handle_message(self, wrapper_msg):
+    def handle_message(self, recipient, payload):
         pass
 
     def _make_simple_contact(self, contact, body1, body2):
