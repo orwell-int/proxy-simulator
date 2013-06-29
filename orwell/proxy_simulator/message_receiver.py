@@ -22,11 +22,11 @@ def main():
     context = zmq.Context()
     socket = context.socket(zmq.SUB)
     socket.connect("tcp://*:%i" % port)
-    socket.setsockopt(zmq.SUBSCRIBE, "")
+    descriptor = tanks.TankDescriptor(0)
+    socket.setsockopt(zmq.SUBSCRIBE, descriptor.recipient)
 
     broadcaster = communications.CombinedDispatcher(socket)
     test_world = world.World(broadcaster, draw_helpers=True)
-    descriptor = tanks.TankDescriptor(0)
     robot = tanks.Tank(descriptor)
     robot_event_handler = communications.TankEventHandler(descriptor)
     test_world.add(robot)
