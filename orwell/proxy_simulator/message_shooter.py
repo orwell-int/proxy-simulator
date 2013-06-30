@@ -42,7 +42,7 @@ def main():
                 if (previous_str != new_str):
                     print "send message:", new_str
                     previous_str = new_str
-                socket.send(descriptor.recipient + ' ' + message)
+                socket.send(message)
         #clock.tick(1 / 0.05)
         clock.tick(40)
 

@@ -60,6 +60,8 @@ class TankEventHandler(BaseEventHandler):
         self._robot_descriptor = robot_descriptor
         self._left = 0
         self._right = 0
+        self._fire1 = False
+        self._fire2 = False
 
     def _key_down(self, key):
         if (key == pygame.K_q):
@@ -78,8 +80,8 @@ class TankEventHandler(BaseEventHandler):
             self._right = 0.0
 
     def get_messages(self):
-        return [self._robot_descriptor.get_move_message(
-            self._left, self._right)]
+        return [self._robot_descriptor.get_input_message(
+            self._left, self._right, self._fire1, self._fire2)]
 
 
 class Broadcaster(object):
@@ -113,9 +115,10 @@ class Broadcaster(object):
         """
         while (self._messages):
             message = self._messages.pop(0)
-            recipient, _, payload = message.partition(' ')
+            recipient, _, typed_payload = message.partition(' ')
+            message_type, _, payload = typed_payload.partition(' ')
             for listener in self._listeners:
-                listener.handle_message(recipient, payload)
+                listener.handle_message(recipient, message_type, payload)
 
 
 class LocalEventDispatcher(Broadcaster):

@@ -1,7 +1,7 @@
 import ode
 import math
 import orwell.proxy_simulator.maths as maths
-import orwell.proxy_simulator.version1_pb2 as pb_messages
+import orwell.messages.controller_pb2 as pb_messages
 
 
 class BaseTank(object):
@@ -9,6 +9,8 @@ class BaseTank(object):
     def __init__(self, robot_descriptor):
         self._velocity_left = 0
         self._velocity_right = 0
+        self._fire1 = False
+        self._fire2 = False
         self._robot_descriptor = robot_descriptor
         self._left_wheel_joints = []
         self._right_wheel_joints = []
@@ -39,16 +41,11 @@ class BaseTank(object):
         for right_wheel_joint in self._right_wheel_joints:
             right_wheel_joint.setParam(ode.ParamVel, self._velocity_right)
 
-    def handle_message(self, recipient, payload):
+    def handle_message(self, recipient, message_type, payload):
         if (self._robot_descriptor.recipient == recipient):
-            wrapper_msg = pb_messages.base_message()
-            try:
-                wrapper_msg.ParseFromString(payload)
-            except Exception as e:
-                print e
-            else:
-                left, right = \
-                        self._robot_descriptor.get_movement(wrapper_msg)
+            if ("Input" == message_type):
+                left, right, self._fire1, self._fire2 = \
+                        self._robot_descriptor.get_input(payload)
                 self.velocity_left = 10 * left
                 self.velocity_right = 10 * right
 
@@ -190,21 +187,21 @@ class TankDescriptor(object):
     def recipient(self):
         return self._recipient
 
-    def get_move_message(self, left, right):
+    def get_input_message(self, left, right, fire1, fire2):
         assert(-1 <= left <= 1)
         assert(-1 <= right <= 1)
-        sub_msg = pb_messages.move_tank_message()
-        sub_msg.left = left
-        sub_msg.right = right
-        wrapper_msg = pb_messages.base_message()
-        wrapper_msg.message_type = "MOVE_TANK"
-        wrapper_msg.serialized_message = sub_msg.SerializeToString()
-        return wrapper_msg.SerializeToString()
+        message = pb_messages.Input()
+        message.move.left = left
+        message.move.right = right
+        message.fire.weapon1 = fire1
+        message.fire.weapon2 = fire2
+        payload = message.SerializeToString()
+        return self.recipient + " Input " + payload
 
-    def get_movement(self, wrapper_msg):
-        assert("MOVE_TANK" == wrapper_msg.message_type)
-        sub_msg = pb_messages.move_tank_message()
-        sub_msg.ParseFromString(wrapper_msg.serialized_message)
-        assert(-1 <= sub_msg.left <= 1)
-        assert(-1 <= sub_msg.right <= 1)
-        return (sub_msg.left, sub_msg.right)
+    def get_input(self, payload):
+        message = pb_messages.Input()
+        message.ParseFromString(payload)
+        assert(-1 <= message.move.left <= 1)
+        assert(-1 <= message.move.right <= 1)
+        return (message.move.left, message.move.right,
+                message.fire.weapon1, message.fire.weapon2)

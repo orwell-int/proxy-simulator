@@ -1,2 +1,10 @@
 *.pyc
 orwell/proxy_simulator/version1_pb2.py
+orwell/messages/controller_pb2.py
+orwell/messages/server_game_pb2.py
+orwell/messages/server_web_pb2.py
+orwell/messages/robot_pb2.py
+.ropeproject
+venv
+setenv
+*.swp
