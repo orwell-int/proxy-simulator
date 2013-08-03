@@ -20,7 +20,7 @@ def main():
     port = arguments.port
     context = zmq.Context()
     socket = context.socket(zmq.PUB)
-    socket.bind("tcp://*:%i" % port)
+    socket.bind("tcp://127.0.0.1:%i" % port)
     messengers = []
     descriptor = tanks.TankDescriptor(0)
     #robot = tanks.Tank(descriptor)

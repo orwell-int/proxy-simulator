@@ -13,7 +13,7 @@ class World(communications.BaseEventHandler):
     clip = 100.0
     fps = 50.0
 
-    def __init__(self, event_dispatcher, resolution=(1024, 768),
+    def __init__(self, event_dispatcher, resolution=(320, 240),
                  draw_helpers=False):
         self._resolution = resolution
         self._event_dispatcher = event_dispatcher

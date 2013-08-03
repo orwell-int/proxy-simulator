@@ -21,7 +21,7 @@ def main():
     port = arguments.port
     context = zmq.Context()
     socket = context.socket(zmq.SUB)
-    socket.connect("tcp://*:%i" % port)
+    socket.connect("tcp://127.0.0.1:%i" % port)
     descriptor = tanks.TankDescriptor(0)
     socket.setsockopt(zmq.SUBSCRIBE, descriptor.recipient)
 
@@ -41,7 +41,8 @@ def main():
         messengers = []
         messengers.append(Quitter())
         pygame.init()
-        screen = pygame.display.set_mode((640, 480))
+        #screen = pygame.display.set_mode((640, 480))
+        screen = pygame.display.set_mode((320, 240))
         pygame.display.set_caption('Message receiver')
         pygame.mouse.set_visible(False)
         clock = pygame.time.Clock()
