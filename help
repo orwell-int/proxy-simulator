@@ -1,16 +1,18 @@
 # commands that may be used to test the simulator
 # install mandatory packages (mercurial is only needed for the vim install from sources)
 sudo apt-get update
-sudo apt-get install git
-sudo apt-get install python-dev
-sudo apt-get install mercurial
-sudo apt-get install make
-sudo apt-get install g++
-sudo apt-get install libsdl1.2-dev
-sudo apt-get install libsdl-image1.2-dev libsdl-sound1.2-dev libsdl-mixer1.2-dev
-sudo apt-get install libode-dev
-sudo apt-get install libsmpeg-dev
-sudo apt-get install libv4l-dev
+sudo apt-get install git -q -y
+sudo apt-get install python-dev -q -y
+sudo apt-get install mercurial -q -y
+sudo apt-get install make -q -y
+sudo apt-get install g++ -q -y
+sudo apt-get install libsdl1.2-dev -q -y
+sudo apt-get install libsdl-image1.2-dev libsdl-sound1.2-dev libsdl-mixer1.2-dev -q -y
+sudo apt-get install libode-dev -q -y
+sudo apt-get install libsmpeg-dev -q -y
+sudo apt-get install libv4l-dev -q -y
+sudo apt-get install freeglut3-dev -q -y
+sudo apt-get install libc6 libjpeg8 libpng12-0 libportmidi0 libsdl-image1.2 libsdl-mixer1.2 libsdl-ttf2.0-0 libsdl1.2debian libsmpeg0 libx11-6 ttf-freefont -q -y
 cd /usr/include/linux
 # patch needed for a python package (probably pygame)
 sudo ln -s ../libv4l1-videodev.h videodev.h
@@ -28,7 +30,9 @@ source ~/germs/germs/infect.sh
 source ~/germs/germs/cure.sh
 infect vim front
 fab install:protobuf
-infect protobuf
+fab install:zmq
+infect protobuf front
+infect zmq front
 # now deal with the project itself
 mkdir ~/orwell
 cd ~/orwell/
